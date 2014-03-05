@@ -1,3 +1,5 @@
+import com.sun.org.apache.regexp.internal.recompile
+
 apply plugin: 'application'
 apply plugin: 'scala'
 

@@ -12,7 +12,7 @@ class CatfOptionParser extends OptionParser[Config]("catf") {
   /**
    * common option
    */
-  opt[String]('d', "demo").action((x, c) => c.copy(demo = x))
+  // opt[String]('d', "demo").action((x, c) => c.copy(demo = x))
 
   version("version").text("show current version")
 
@@ -24,7 +24,7 @@ class CatfOptionParser extends OptionParser[Config]("catf") {
   cmd(TimeStat.name)
     .text("stat the logcat")
     .action((_, c) => c.copy(cmd = TimeStat.name)).children(
-      opt[String]('f', "file").action((x, c) => c.copy(file = x))
+      arg[String]("<file>").text("data file to be analyzed").action((x, c) => c.copy(file = x))
     )
 
   /**
@@ -33,7 +33,19 @@ class CatfOptionParser extends OptionParser[Config]("catf") {
   cmd(TestResultParser.name)
     .text("parse the test result")
     .action((_, c) => c.copy(cmd = TestResultParser.name)).children(
-      opt[String]('f', "file").action((x, c) => c.copy(file = x))
+      arg[String]("<file>").text("junit test output (xml)").action((x, c) => c.copy(file = x))
+    )
+
+  /**
+   * option for command split
+   */
+  cmd(LogSplit.name)
+    .text("filter out log data with the specific regex.")
+    .action((_, c) => c.copy(cmd = LogSplit.name)).children(
+      opt[String]('r', "regex").text("REGEX to filter out lines").action((x, c) => c.copy(regex = x)).required(),
+      opt[String]('o', "output").text("Output file name").action((x, c) => c.copy(output = x)).optional(),
+
+      arg[String]("<file>").text("data file to be analyzed").action((x, c) => c.copy(file = x))
     )
 
   checkConfig(c => if (c.cmd.size > 0) success else failure("No command specified."))
@@ -41,7 +53,7 @@ class CatfOptionParser extends OptionParser[Config]("catf") {
   override def showUsageOnError = true
 }
 
-/**
- * Tag trait
- */
-case class Config(cmd: String = "", demo: String = "", file: String = "")
+case class Config(cmd: String = "",
+                  file: String = "",
+                  regex: String = "",
+                  output: String = "")

@@ -22,7 +22,7 @@ class TimeStat extends Command {
   codec.onMalformedInput(CodingErrorAction.REPLACE)
   codec.onUnmappableCharacter(CodingErrorAction.REPLACE)
 
-  def fromLogcat(path: String) = {
+  private def fromLogcat(path: String) = {
     val REGEX = """(\d{2}\-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}).*Test (start|end) for (\w+)""".r
 
     var testMap = Map[String, TestTimeStat]()
@@ -52,13 +52,15 @@ class TimeStat extends Command {
     dateFormat.parse(dateStr).getTime
   }
 
-  case class TestTimeStat(name: String, startAt: Long = 0L, endAt: Long = 0L)
+  case class TestTimeStat(name: String, startAt: Long = 0L, endAt: Long = 0L) {
+    def elapse: Long = Math.max(endAt - startAt, 0)
+  }
 
   override def exec(conf: Config): Unit = {
-    val r = fromLogcat(conf.file).sortBy(t => t.endAt - t.startAt)
+    val r = fromLogcat(conf.file).sortBy(_.elapse)
 
-    r.foreach(t => info("%s => %s".format(t.name, Format.millisToReadableTime(t.endAt - t.startAt))))
-    info(Format.millisToReadableTime(r.map(t => t.endAt - t.startAt).sum))
+    r.foreach(t => info("%s\t%s".format(t.name, Format.millisToReadableTime(t.elapse))))
+    info("Total: %s".format(Format.millisToReadableTime(r.map(_.elapse).sum)))
   }
 }
 

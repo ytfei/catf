@@ -12,10 +12,12 @@ object Main extends App with InternalLogger /*with Command*/ {
 
   val cmdStat = new TimeStat
   val cmdParseTestResult = new TestResultParser
+  val cmdSplitLogcat = new LogSplit
 
   val cmdMap = Map[String, Command](
     cmdStat.name -> cmdStat,
-    cmdParseTestResult.name -> cmdParseTestResult
+    cmdParseTestResult.name -> cmdParseTestResult,
+    cmdSplitLogcat.name -> cmdSplitLogcat
   )
 
   val parser = new CatfOptionParser
@@ -31,6 +33,6 @@ object Main extends App with InternalLogger /*with Command*/ {
       }
 
     case None =>
-      // println("Cannot extract the configuration!")
+    // println("Cannot extract the configuration!")
   }
 }
