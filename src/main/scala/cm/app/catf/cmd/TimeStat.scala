@@ -15,14 +15,27 @@ import cm.app.catf.util.Format
 
 class TimeStat extends Command {
 
-  override val name: String = TimeStat.name
+  override val name: String = TimeStat.cmdName
 
   // in case of malformed encoding
   implicit val codec = Codec("UTF-8")
   codec.onMalformedInput(CodingErrorAction.REPLACE)
   codec.onUnmappableCharacter(CodingErrorAction.REPLACE)
 
-  private def fromLogcat(path: String) = {
+  import TimeStat._
+
+  override def exec(conf: Config): Unit = {
+    val r = fromLogcat(conf.file).values.toSeq.sortBy(_.elapse)
+
+    r.foreach(t => info("%s\t%s".format(t.name, Format.millisToReadableTime(t.elapse))))
+    info("Total: %s".format(Format.millisToReadableTime(r.map(_.elapse).sum)))
+  }
+}
+
+object TimeStat {
+  val cmdName = "stat"
+
+  def fromLogcat(path: String) = {
     val REGEX = """(\d{2}\-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}).*Test (start|end) for (\w+)""".r
 
     var testMap = Map[String, TestTimeStat]()
@@ -42,7 +55,11 @@ class TimeStat extends Command {
 
     })
 
-    testMap.values.toSeq
+    testMap
+  }
+
+  case class TestTimeStat(name: String, startAt: Long = 0L, endAt: Long = 0L) {
+    def elapse: Long = Math.max(endAt - startAt, 0)
   }
 
   private implicit def millisFromStr(dateStr: String): Long = {
@@ -51,19 +68,4 @@ class TimeStat extends Command {
     val dateFormat = new SimpleDateFormat("MM-dd HH:mm:ss.SSS")
     dateFormat.parse(dateStr).getTime
   }
-
-  case class TestTimeStat(name: String, startAt: Long = 0L, endAt: Long = 0L) {
-    def elapse: Long = Math.max(endAt - startAt, 0)
-  }
-
-  override def exec(conf: Config): Unit = {
-    val r = fromLogcat(conf.file).sortBy(_.elapse)
-
-    r.foreach(t => info("%s\t%s".format(t.name, Format.millisToReadableTime(t.elapse))))
-    info("Total: %s".format(Format.millisToReadableTime(r.map(_.elapse).sum)))
-  }
-}
-
-object TimeStat {
-  val name = "stat"
 }

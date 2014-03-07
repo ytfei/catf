@@ -56,9 +56,9 @@ class LogSplit extends Command {
     r
   }
 
-  override def name: String = LogSplit.name
+  override def name: String = LogSplit.cmdName
 }
 
 object LogSplit {
-  val name = "split"
+  val cmdName = "split"
 }

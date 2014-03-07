@@ -1,13 +1,40 @@
 package cm.app.catf.cmd
 
 import scala.xml._
+import cm.app.catf.util.Format
 
 /**
  * Created by eyang on 3/4/14.
  */
 class TestResultParser extends Command {
+
+  import TestResultParser._
+  import TimeStat.TestTimeStat
+
   override def exec(conf: Config): Unit = {
-    val data = XML.loadFile(conf.file)
+    val cases = parseTestResult(conf.file)
+    val casesWithTime = TimeStat.fromLogcat(conf.logcat)
+
+    val processed = cases.map(c => {
+      val t = casesWithTime.get(c.name)
+      t.fold(c)(x => c.copy(time = x.elapse / 1000))
+    }).sortBy(_.time)
+
+    for (c <- processed) {
+      val result = if (c.failure.isDefined) "Failed" else "Passed"
+      val time = (c.time * 1000).toLong
+      println(s"${c.name}\t${Format.millisToReadableTime(time)}\t${result}")
+    }
+  }
+
+  override val name: String = TestResultParser.cmdName
+}
+
+object TestResultParser {
+  val cmdName = "res"
+
+  def parseTestResult(path: String) = {
+    val data = XML.loadFile(path)
 
     val cases = (data \\ "testcase").map(e => {
       val time = e.attribute("time").map(_.text.toDouble)
@@ -15,45 +42,15 @@ class TestResultParser extends Command {
         Failure((f \ "@message").text, (f \ "@type").text, f.text)
       })
 
-      TestCase((e \ "@name").text, (e \ "@classname").text, time, if (f.size > 0) Some(f.head) else None)
+      TestCase((e \ "@name").text, (e \ "@classname").text, time.getOrElse(0.0), if (f.size > 0) Some(f.head) else None)
     })
 
-    var i = 0
-    for (c <- cases) {
-      if (c.failure.isDefined) {
-        i += 1
-
-        println(s"TestCase: ${c.name} \t ${c.clazz}")
-
-        c.failure.foreach(f => println(f.desc))
-
-        println
-      }
-    }
-
-    println(s"Total failures: ${i}")
-
-    for (c <- cases) {
-      println(s"TestCase: ${c.name} \t ${c.clazz}\t is failed: ${c.failure.isDefined}")
-      println
-    }
-    println(s"Total cases: ${cases.size}")
-
-
-    for (c <- cases) {
-      val result = if (c.failure.isDefined) "Failed" else c.time.get
-      println(s"${c.name}\t${result}")
-    }
+    cases
   }
 
-  private case class TestCase(name: String, clazz: String, time: Option[Double] = None, failure: Option[Failure] = None)
+  case class TestCase(name: String, clazz: String, time: Double = 0.0, failure: Option[Failure] = None)
 
-  private case class Failure(message: String, typeStr: String, desc: String)
+  case class Failure(message: String, typeStr: String, desc: String)
 
-  override val name: String = TestResultParser.name
-}
-
-object TestResultParser {
-  val name = "res"
 }
 
