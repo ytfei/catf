@@ -3,22 +3,28 @@
 ### Function definitions START
 
 function usage {
-    echo "usage: catf -s <device-sid> -m <module>"
+    echo "usage: catf -s <device-sid> -m <module1,module2,module3,...>"
 }
 
+function p {
+local n=`date +"%Y-%m-%d %H:%M:%S %:z"`
+echo $n $*
+}
+# accept parameter: package name
 function run_test {
-local cmd="${adb_cmd} shell am instrument -w -e notAnnotation com.seven.asimov.it.annotation.Ignore -e package ${module_id} com.seven.asimov.it/com.seven.asimov.it.IntegrationTestRunnerGa"
+local mod=$1
+local cmd="${adb_cmd} shell am instrument -w -e notAnnotation com.seven.asimov.it.annotation.Ignore -e package ${mod} com.seven.asimov.it/com.seven.asimov.it.IntegrationTestRunnerGa"
 
-echo "Start to test"
-echo ${cmd}
+p "Start to test"
+p ${cmd}
 `${cmd}`
 
 local date_id=`date +%Y%m%d_%H%M%S`
-local pack=`echo ${module_id} | awk -F '.' '{ print $NF }'`
+local pack=`echo ${mod} | awk -F '.' '{ print $NF }'`
 cmd="${adb_cmd} pull /sdcard/OCIntegrationTestsResults ./OCIntegrationTestsResults_${pack}_${date_id}"
 
-echo "Start to archive test result"
-echo ${cmd}
+p "Start to archive test result"
+p ${cmd}
 `${cmd}`
 }
 
@@ -48,14 +54,14 @@ done
 if [ X${device_sid} != X ]
 then
     adb_cmd="adb -s ${device_sid} "
-    echo "Device serial id is: ${device_sid}"
+    p "Device serial id is: ${device_sid}"
 else
     adb_cmd="adb "
 
     device_num=`adb devices | grep 'device' | wc -l`
     if [ ${device_num} -gt 2 ]
     then
-        echo "There are more than one device connected, please specify the device sid!"
+        p "There are more than one device connected, please specify the device sid!"
         usage
         exit 1
     fi
@@ -63,11 +69,16 @@ fi
 
 if [ X${module_id} != X ]
 then
-    echo "CATF module: ${module_id}"
+    modules=`echo ${module_id} | tr ',' ' '`
+    p "CATF module: ${modules}"
 else
-    echo "module id cannot be empty!"
+    p "module id cannot be empty!"
     usage
     exit 1
 fi
 
-run_test
+for m in ${modules}
+do
+    run_test $m
+done
+
