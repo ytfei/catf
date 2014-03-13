@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+cat > catf.sh <<'EOF'
 #!/bin/bash
 
 ### Function definitions START
@@ -84,3 +86,67 @@ do
     run_test $m
 done
 
+
+EOF
+
+### execute the scripts
+chmod u+x catf.sh
+
+## collect device and modules info
+## assign module to specific devices (round-robin)
+devices=(`adb devices | grep device | grep -v List | awk '{print $1}' | tr '\n' ' '`)
+modules=(`echo $packages | tr ',' ' '`)
+
+dev_len=${#devices[@]}
+mod_len=${#modules[@]}
+
+per_dev=()
+
+if [ $mod_len -gt $dev_len ]; then
+    step=$dev_len
+else
+    step=$mod_len
+fi
+
+for (( i=0; i<$mod_len; i+=$step ))
+do
+    for (( j=0; j<$step; j++ ))
+    do
+        idx=$[ $i + $j ]
+        m="${modules[$idx]} ${per_dev[$j]}"
+
+        per_dev[$j]=$m
+    done
+done
+
+### start catf.sh
+for (( i=0; i<${#per_dev[@]}; i++ ))
+do
+    echo "./catf.sh -s ${devices[$i]} -m `echo ${per_dev[$i]} | tr ' ' ','` 2>&1 > ${devices[$i]}.log &"
+    ./catf.sh -s ${devices[$i]} -m `echo ${per_dev[$i]} | tr ' ' ','` 2>&1 > ${devices[$i]}.log &
+done
+
+### wait for jobs to finish
+for job in `jobs -p` ; do
+    wait $job
+done
+
+## archive the logs
+result=$?
+
+for d in ./OCIntegrationTestsResults* ; do
+    if [ -d $d ] ; then
+        target_zip="`basename $d`_${result}.tar.gz"
+        tar --gzip -cvf $target_zip $d
+    fi
+done
+
+find . -maxdepth 1 -name '*.tar.gz' -type f -print0 | xargs -0r mv -t /var/lib/jenkins/archived_logs/
+
+cat > README <<'EOF'
+
+Logcat output, tcpdump files are archived locally since these files are huge and it's not a good idea to publish them to remote jenkins.
+
+You can find them on PC: 10.40.31.223:/var/lib/jenkins/archived_logs/
+
+EOF

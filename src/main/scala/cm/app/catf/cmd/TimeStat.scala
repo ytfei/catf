@@ -17,11 +17,6 @@ class TimeStat extends Command {
 
   override val name: String = TimeStat.cmdName
 
-  // in case of malformed encoding
-  implicit val codec = Codec("UTF-8")
-  codec.onMalformedInput(CodingErrorAction.REPLACE)
-  codec.onUnmappableCharacter(CodingErrorAction.REPLACE)
-
   import TimeStat._
 
   override def exec(conf: Config): Unit = {
@@ -39,6 +34,12 @@ object TimeStat {
     val REGEX = """(\d{2}\-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}).*Test (start|end) for (\w+)""".r
 
     var testMap = Map[String, TestTimeStat]()
+
+    // in case of malformed encoding
+    implicit val codec = Codec("UTF-8")
+    codec.onMalformedInput(CodingErrorAction.REPLACE)
+    codec.onUnmappableCharacter(CodingErrorAction.REPLACE)
+
     Source.fromFile(path).getLines().
       filter(REGEX.findFirstIn(_).isDefined).
       foreach(l => {
